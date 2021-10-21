@@ -6,6 +6,7 @@ import (
 )
 
 type YoutubeLiveChatBot struct {
+	LiveChatChannel string
 	LiveChatId                string
 	ChannelYoutubeService            *youtube.Service
 	BotYoutubeService	*youtube.Service

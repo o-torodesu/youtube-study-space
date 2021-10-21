@@ -27,10 +27,7 @@ type AccessTokenResponseStruct struct {
 }
 
 
-func NewYoutubeLiveChatBot(liveChatId string, controller *myfirestore.FirestoreController, ctx context.Context) (*YoutubeLiveChatBot, error) {
-	//clientOption := option.WithCredentialsFile("/Users/drew/Development/機密ファイル/GCP/youtube-study-space-c4bcd4edbd8a.json")
-	//clientOption := option.WithCredentialsFile("C:/Development/GCP Credentials/music-quiz-287112-83a452727d6d.json")
-	
+func NewYoutubeLiveChatBot(liveChannelId string, liveChatId string, controller *myfirestore.FirestoreController, ctx context.Context) (*YoutubeLiveChatBot, error) {
 	channelCredential, err := controller.RetrieveYoutubeChannelCredentialConfig(ctx)
 	if err != nil {
 		return nil, err
@@ -75,6 +72,7 @@ func NewYoutubeLiveChatBot(liveChatId string, controller *myfirestore.FirestoreC
 	}
 	
 	return &YoutubeLiveChatBot{
+		LiveChatChannel: liveChannelId,
 		LiveChatId:                liveChatId,
 		ChannelYoutubeService: channelYoutubeService,
 		BotYoutubeService: botYoutubeService,
@@ -150,11 +148,26 @@ func (bot *YoutubeLiveChatBot) PostMessage(message string, ctx context.Context) 
 	_, err := insertCall.Do()
 	if err != nil {
 		log.Println("first post was failed")
-		// post2
-		err := bot.RefreshLiveChatId(ctx)
+		// bot credentialのaccess tokenが期限切れの可能性
+		botCredentialConfig, err := bot.FirestoreController.RetrieveYoutubeBotCredentialConfig(ctx)
 		if err != nil {
 			return err
 		}
+		if botCredentialConfig.ExpirationDate.Before(utils.JstNow()) {
+			// access tokenが期限切れのため、更新する
+			err := bot.RefreshBotAccessToken(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			// live chat idが変わっている可能性があるため、更新して再試行
+			err := bot.RefreshLiveChatId(ctx)
+			if err != nil {
+				return err
+			}
+		}
+		
+		// second post
 		liveChatMessage.Snippet.LiveChatId = bot.LiveChatId
 		liveChatMessageService = youtube.NewLiveChatMessagesService(bot.BotYoutubeService)
 		insertCall = liveChatMessageService.Insert(part, &liveChatMessage)
@@ -164,10 +177,6 @@ func (bot *YoutubeLiveChatBot) PostMessage(message string, ctx context.Context) 
 			return err
 		}
 	}
-	//if config.ExpireDate.Before(core.JstNow()) {
-	//	log.Println("access token is expired. refreshing...")
-	//	_ = RefreshChannelAccessToken(&config, client, ctx)
-	//}
 	
 	return nil
 }
@@ -195,6 +204,11 @@ func (bot *YoutubeLiveChatBot) RefreshLiveChatId(ctx context.Context) error {
 		}
 	}
 	if len(response.Items) == 1 {
+		channelIdOfTheLiveBroadcast := response.Items[0].Snippet.ChannelId
+		if channelIdOfTheLiveBroadcast != bot.LiveChatChannel {
+			return errors.New("channelIdOfTheLiveBroadcast != bot.LiveChatChannel!!")
+		}
+		
 		newLiveChatId := response.Items[0].Snippet.LiveChatId
 		log.Println("live chat id :", newLiveChatId)
 		err := bot.FirestoreController.SaveLiveChatId(newLiveChatId, ctx)

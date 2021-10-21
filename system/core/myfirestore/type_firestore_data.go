@@ -14,6 +14,7 @@ type ConstantsConfigDoc struct {
 }
 
 type YoutubeLiveConfigDoc struct {
+	LiveChannelId string `firestore:"live-channel-id"`
 	LiveChatId string `firestore:"live-chat-id"`
 	NextPageToken string `firestore:"next-page-token"`
 	OAuthRefreshTokenUrl string `firestore:"o-auth-refresh-token-url"`
