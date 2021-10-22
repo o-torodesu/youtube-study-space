@@ -1164,6 +1164,10 @@ func (s *System) CheckLiveStreamStatus(ctx context.Context) error {
 	return checker.Check(ctx)
 }
 
+func (s *System) CheckBotAccess(ctx context.Context) error {
+
+}
+
 func (s *System) ResetDailyTotalStudyTime(ctx context.Context) error {
 	log.Println("ResetDailyTotalStudyTime()")
 	constantsConfig, err := s.FirestoreController.RetrieveSystemConstantsConfig(ctx)
