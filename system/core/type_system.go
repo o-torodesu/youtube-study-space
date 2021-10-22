@@ -35,6 +35,7 @@ const (
 	Out		// !out
 	Info	// !info
 	My		// !my
+	Rank	// !rank
 	Change 	// !change
 )
 

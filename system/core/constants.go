@@ -16,6 +16,7 @@ const (
 	OutCommand  = "!out"
 	InfoCommand = "!info"
 	MyCommand   = "!my"
+	RankCommand = "!rank"
 	ChangeCommand = "!change"
 
 	WorkNameOptionPrefix            = "work="

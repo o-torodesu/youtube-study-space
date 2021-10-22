@@ -140,21 +140,18 @@ func TestSystem_ParseCommand(t *testing.T) {
 			Input: "out",
 			ExpectedOutput: CommandDetails{
 				CommandType: NotCommand,
-				InOptions:   InOptions{},
 			},
 		},
 		{
 			Input: "!out",
 			ExpectedOutput: CommandDetails{
 				CommandType: Out,
-				InOptions:   InOptions{},
 			},
 		},
 		{
 			Input: "!info",
 			ExpectedOutput: CommandDetails{
 				CommandType: Info,
-				InOptions:   InOptions{},
 			},
 		},
 		{
@@ -186,6 +183,12 @@ func TestSystem_ParseCommand(t *testing.T) {
 						BoolValue: false,
 					},
 				},
+			},
+		},
+		{
+			Input: "!rank",
+			ExpectedOutput: CommandDetails{
+				CommandType: Rank,
 			},
 		},
 	}

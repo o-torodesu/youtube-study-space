@@ -21,6 +21,7 @@ const (
 	OutProcessFailed
 	InfoProcessFailed
 	MyProcessFailed
+	RankProcessFailed
 	ChangeProcessFailed
 )
 

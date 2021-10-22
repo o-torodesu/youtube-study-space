@@ -119,6 +119,12 @@ func (s *System) Command(commandString string, userId string, userDisplayName st
 			return customerror.MyProcessFailed.New(err.Error())
 		}
 		return customerror.NewNil()
+	case Rank:
+		err := s.Rank(commandDetails, ctx)
+		if err != nil {
+			return customerror.RankProcessFailed.New(err.Error())
+		}
+		return customerror.NewNil()
 	case Change:
 		err := s.Change(commandDetails, ctx)
 		if err != nil {
@@ -147,7 +153,6 @@ func (s *System) ParseCommand(commandString string) (CommandDetails, customerror
 		case OutCommand:
 			return CommandDetails{
 				CommandType: Out,
-				InOptions:   InOptions{},
 			}, customerror.NewNil()
 		case InfoCommand:
 			commandDetails, err := s.ParseInfo(commandString)
@@ -161,6 +166,10 @@ func (s *System) ParseCommand(commandString string) (CommandDetails, customerror
 				return CommandDetails{}, err
 			}
 			return commandDetails, customerror.NewNil()
+		case RankCommand:
+			return CommandDetails{
+				CommandType: Rank,
+			}, customerror.NewNil()
 		case ChangeCommand:
 			commandDetails, err := s.ParseChange(commandString)
 			if err.IsNotNil() {
@@ -183,7 +192,6 @@ func (s *System) ParseCommand(commandString string) (CommandDetails, customerror
 			// 間違いコマンド
 			return CommandDetails{
 				CommandType: InvalidCommand,
-				InOptions:   InOptions{},
 			}, customerror.NewNil()
 		}
 	} else if strings.HasPrefix(commandString, WrongCommandPrefix) {
@@ -191,7 +199,6 @@ func (s *System) ParseCommand(commandString string) (CommandDetails, customerror
 	}
 	return CommandDetails{
 		CommandType: NotCommand,
-		InOptions:   InOptions{},
 	}, customerror.NewNil()
 }
 
@@ -654,7 +661,7 @@ func (s *System) ShowUserInfo(command CommandDetails, ctx context.Context) error
 
 func (s *System) My(command CommandDetails, ctx context.Context) error {
 	// ユーザードキュメントはすでにあり、登録されていないプロパティだった場合、そのままプロパティを保存したら自動で作成される。
-	// また、読み込みのときにそのプロパティがなくても大丈夫。自動で初期値が割り当てられる。
+	// また、読み込みのときにそのプロパティがなくても自動で初期値が割り当てられるので、エラーにはならない。
 	// ただし、ユーザードキュメントがそもそもない場合は、書き込んでもエラーにはならないが、登録日が記録されないため、要登録。
 	// そのユーザーはドキュメントがあるか？
 	isUserRegistered, err := s.IfUserRegistered(ctx)
@@ -695,6 +702,39 @@ func (s *System) My(command CommandDetails, ctx context.Context) error {
 		}
 	}
 	s.SendLiveChatMessage(s.ProcessedUserDisplayName + "さんのmy設定を更新しました。", ctx)
+	return nil
+}
+
+// Rank my設定のrankのオンオフを切り替える。
+func (s *System) Rank(command CommandDetails, ctx context.Context) error {
+	// そのユーザーはドキュメントがあるか？（登録済みか？）
+	isUserRegistered, err := s.IfUserRegistered(ctx)
+	if err != nil {
+		return err
+	}
+	if !isUserRegistered {	// ない場合は作成。
+		err := s.InitializeUser(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	
+	userData, err := s.FirestoreController.RetrieveUser(s.ProcessedUserId, ctx)
+	if err != nil {
+		return err
+	}
+	err = s.FirestoreController.SetMyRankVisible(s.ProcessedUserId, !userData.RankVisible, ctx)
+	if err != nil {
+		_ = s.LineBot.SendMessageWithError("failed to set my-rank-visible", err)
+		s.SendLiveChatMessage(s.ProcessedUserDisplayName+
+			"さん、エラーが発生しました。もう一度試してみてください。", ctx)
+		return err
+	}
+	if userData.RankVisible {
+		s.SendLiveChatMessage(s.ProcessedUserDisplayName + "さんのランク表示をオフにしました。", ctx)
+	} else {
+		s.SendLiveChatMessage(s.ProcessedUserDisplayName + "さんのランク表示をオンにしました。", ctx)
+	}
 	return nil
 }
 
