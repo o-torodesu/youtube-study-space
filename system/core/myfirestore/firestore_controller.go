@@ -185,6 +185,24 @@ func (controller *FirestoreController) RetrieveUser(userId string, ctx context.C
 	return userData, nil
 }
 
+func (controller *FirestoreController) RetrieveUserHistory(userId string, ctx context.Context) ([]UserHistoryDoc, error) {
+	docRefs, err := controller.FirestoreClient.Collection(USERS).Doc(userId).Collection(HISTORY).DocumentRefs(ctx).GetAll()
+	if err != nil {
+		return []UserHistoryDoc{}, err
+	}
+	var userHistory []UserHistoryDoc
+	for _, historyDocRef := range docRefs {
+		hidtoryDoc, err := historyDocRef.Get(ctx)
+		if err != nil {
+			return []UserHistoryDoc{}, err
+		}
+		var historyData UserHistoryDoc
+		_ = hidtoryDoc.DataTo(&historyData)
+		userHistory = append(userHistory, historyData)
+	}
+	return userHistory, nil
+}
+
 func (controller *FirestoreController) UpdateTotalTime(userId string, newTotalTimeSec int, newDailyTotalTimeSec int, ctx context.Context) error {
 	_, err := controller.FirestoreClient.Collection(USERS).Doc(userId).Set(ctx, map[string]interface{}{
 		DailyTotalStudySecFirestore: newDailyTotalTimeSec,
